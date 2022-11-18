@@ -1,10 +1,11 @@
 #!usr/bin/env python3
 
 import sys, os, subprocess
-import re #for motifs ?
+import re #for count
+import pandas as pd
 
-
-def find_count(esearch_output):
+#####################FUNCTIONS#######################################################################################################
+def find_count(esearch_output): #Function to get Count
     count_regex = re.compile(r'<Count>(\d+)<\/Count>')
     for line in process_output.readlines():
         find_result = count_regex.findall(line)
@@ -13,7 +14,7 @@ def find_count(esearch_output):
     # if it doesn't find anything
     return 0
 
-def find_interesting_values(filename):
+def unique_species_names(filename):
     result = []
     fasta_interesting_stuff_regex = re.compile(r">.+(\[.+\]$)")
     f = open(filename, 'r')
@@ -25,27 +26,51 @@ def find_interesting_values(filename):
     return set(result)
 
 
+
 ##############USER INPUT PROTEIN FAMILY AND TAXONOMY##################################################################################
 protein_fam = input("Enter protein family: ")+"[Protein Name]"
 taxonomy = input("Enter Taxonomy ID/Division\n(if taxonomy ID, type as txid##### ; Division example \"Ascomycota\"): ")+"[organism]"
 print("Please note that partial proteins are not included")
 
 protein_fam_taxonomy = protein_fam+" AND " +taxonomy+" NOT partial[Properties]"
-fasta_file_name = input("Enter the name of the output fasta file\nPlease do not include spaces in the name, addition of \".fa\" is unecessary: ")+".fa"
 
-if os.path.isfile(fasta_file_name) == True: #if file name is not in current path:
-    print("File", fasta_file_name, "already exists, please use a different name or delete the current fasta file in the working directory")
-    del_file = input("Would you like to delete the current file (Y/N): ")
-    if del_file == "Y" :
-        os.remove(fasta_file_name)
-        print("Please rerun the program to name the file again.")
-    else:
-        print("Please pick a different name.")
-    sys.exit()
-#print(protein_fam_taxonomy)
+fasta_file_spec_string = """
+Enter the name of the output fasta file.
+Please do not include spaces in the name.
+Please end the filename with '.fa':
+"""
+
+while True:
+    fasta_file_name = input(fasta_file_spec_string)
+
+    if not fasta_file_name.endswith(".fa"):
+        print("Please provide a filename which ends in '.fa'\n")
+        continue
+
+    if len(fasta_file_name) < 4:
+        print("Please provide a filename before the '.fa' extension.\n")
+        continue
+    
+    if os.path.isfile(fasta_file_name):
+        print("You have specified a file name which exists. Would you like to delete this file?")
+        while True:
+            del_file = input("Would you like to delete the current file? (y/n):\n").lower()
+            if del_file == "y":
+                try:
+                    os.remove(fasta_file_name)
+                    break
+                except Exception as e:
+                    print("Encountered exception in deleting " + fasta_file_name)
+                    print(e)
+                    sys.exit(1)
+            elif del_file == "n":
+                print("Please specify a different filename.")
+                break
+            else:
+                print("You did not provide a valid answer. Please try again.")
+    break
 
 cmd = "esearch -db protein -query \""+protein_fam_taxonomy+"\"" 
-# cmd2 = "esearch -db protein -query \""+protein_fam_taxonomy+"\" | efetch -format fasta > "+fasta_file_name+""
 
 process = subprocess.Popen(cmd, -1, shell=True, text=True, stdout=subprocess.PIPE) #can't use os.system since that doesn't actually create a standard output
 process.wait() 
@@ -64,28 +89,25 @@ process = subprocess.Popen(cmd, -1, shell=True, text=True, stdout=subprocess.PIP
 process.wait()
 process_output = process.stdout
 
-
-set_of_things = find_interesting_values(fasta_file_name)
-for thing in set_of_things:
-    print(thing + "\n")
-
-# with open(fasta_file_name, 'r') as fasta_file:
-#     fasta_file_contents = fasta_file.readlines()
-#     fasta_interesting_stuff_regex = re.compile(r">.+(\[.+\]$)")
-#     matches = fasta_interesting_stuff_regex.match(fasta_file_contents)
-#     for match in matches:
-#         print(match)
-
-
-# pseudo code
-#if intermediate file check passes, use original command:
-
-# os.system(cmd2)
-print("process complete, please check work directory for the output fasta file")
+print("process complete, please check work directory if you would like to see the full fasta file output")
 
 ##############SEQUENCE PROCESSING#############################################################################################
-#species_identification = re.search(>)
+my_file = open("sequence_general_info.txt","w")
 
+while True:
+    sequence_process = input("Would you like to continue with sequence processing? (y/n): ").lower()
+    if sequence_process == "y" :
+        species_names = unique_species_names(fasta_file_name)
+        print("Unique species list is written to the file named 'sequence_general_info'.txt")
+        for names in species_names:
+            my_file.write(names + "\n")
+        break
+    elif sequence_process == "n":
+        print("Please feel free to try other protein families/taxonomy IDs")
+        sys.exit()
+    print("Please provide a y/n answer.\n")
+
+my_file.close()
 ##############PLOTTING SEQUENCE CONSERVATION##################################################################################
 
 
