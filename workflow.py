@@ -26,6 +26,12 @@ def unique_species_names(filename):
             # print(f"found this: {matches}")
     return set(result)
 
+def get_key_and_value(fasta_file):
+    f = open(fasta_file, 'r')
+    file_as_string = f.read()
+    species_sequence = r'^>(?P<strain_species>.+\]$)\n(?P<sequence>[A-Z\n]+)'
+    match_group_tuples = re.findall(species_sequence, file_as_string, re.M)
+    return dict([(k, v.replace('\n', '')) for k, v in match_group_tuples])
 
 ##############USER INPUT PROTEIN FAMILY AND TAXONOMY##################################################################################
 protein_fam = input("Enter protein family: ")+"[Protein Name]"
@@ -108,6 +114,18 @@ while True:
     print("Please provide a y/n answer.\n")
 
 my_file.close()
+
+fasta_file = input("Please input the fasta file name for further data processing: ")
+
+species_sequence = get_key_and_value(fasta_file)
+print(species_sequence)
+
+
+
+# processed_fasta_file = open(fasta_file)
+
+
+
 ##############PLOTTING SEQUENCE CONSERVATION##################################################################################
 
 
