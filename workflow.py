@@ -133,31 +133,26 @@ Q3, Q1 = np.percentile(values, [75 ,25])
 print("The Q3 sequence length is: ", Q3)
 print("The Q1 sequence length is: ", Q1)
 
-IQR = Q3-Q1
+IQR = Q3 - Q1
 upper_boundary = Q3 + (1.5 * IQR)
-print(upper_boundary)
+print("Upper Boundary is: ", upper_boundary)
 lower_boundary = Q1 - (1.5 * IQR)
-print(lower_boundary)
+print("Lower Boundary is: ", lower_boundary)
 
+print("Outliers are defined as 1.5 multiplied by Q1 and Q3. If values are below and above these quartiles respectively, they will appear below.")
 outliers = {}
 for (k, v) in species_sequence.items():
     if len(v) < lower_boundary or len(v) > upper_boundary:
         print(f"Outlier {k} with length {len(v)}")
         outliers[k] = v
 
-delete_outlier = input("Would you like to delete these outliers? (y/n): ").lower()
-# write this functionality later
-
-
-#pseudo code
-#if > upperboundary/ lower boundary, user : do u want to remove? or keep. Print key and value of those species that match those conditions
-# print("Species with sequence length outliers: ", {k: v for (k, v) in species_sequence.items() if len(v) < lower_boundary and len(v) > upper_boundary})
-# print({k: len(v) for (k, v) in species_sequence.items()})
-
-
-
-# processed_fasta_file = open(fasta_file)
-
+if len(outliers.keys()) == 0:
+    print("No outliers have been found.")
+else:
+    delete_outlier = input("Would you like to delete these outliers? (y/n): ").lower()
+    if delete_outlier == "y":
+        print("Attempting to remove {len(outliers.keys)} items")
+        list(map(species_sequence.pop,outliers.keys()))
 
 
 ##############PLOTTING SEQUENCE CONSERVATION##################################################################################
