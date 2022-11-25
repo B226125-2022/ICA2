@@ -14,6 +14,7 @@ def find_count(esearch_output): #Function to get Count
     # if it doesn't find anything
     return 0
 
+#get unique species_names
 def unique_species_names(filename):
     result = []
     fasta_interesting_stuff_regex = re.compile(r">.+(\[.+\]$)")
@@ -24,7 +25,6 @@ def unique_species_names(filename):
             result.append(matches[0].strip('[').strip(']'))
             # print(f"found this: {matches}")
     return set(result)
-
 
 
 ##############USER INPUT PROTEIN FAMILY AND TAXONOMY##################################################################################
@@ -98,7 +98,7 @@ while True:
     sequence_process = input("Would you like to continue with sequence processing? (y/n): ").lower()
     if sequence_process == "y" :
         species_names = unique_species_names(fasta_file_name)
-        print("Unique species list is written to the file named 'sequence_general_info'.txt")
+        print("Unique species list of names is written to the file named 'sequence_general_info.txt'")        
         for names in species_names:
             my_file.write(names + "\n")
         break
