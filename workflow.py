@@ -6,6 +6,19 @@ import pandas as pd
 import numpy as np
 from tabulate import tabulate
 
+STRING_SPLIT_LENGTH = 70
+
+
+# [species_sequence[i:i+STRING_SPLIT_LENGTH] for i in range(0, len(species_sequence), STRING_SPLIT_LENGTH)]
+
+'''
+for (k,v) in dict.items():
+    write key to file
+    values_list = [value[i:i+STRING_SPLIT_LENGTH] for i in range(0, len(value), STRING_SPLIT_LENGTH)]
+    write values_list.join('\n')
+'''
+
+
 #####################FUNCTIONS#######################################################################################################
 def find_count(esearch_output): #Function to get Count
     count_regex = re.compile(r'<Count>(\d+)<\/Count>')
@@ -19,7 +32,7 @@ def find_count(esearch_output): #Function to get Count
 #get unique species_names
 def unique_species_names(filename):
     result = []
-    fasta_interesting_stuff_regex = re.compile(r">.+(\[.+\]$)")
+    fasta_interesting_stuff_regex = re.compile(r"(>.+\[?.+\]?$)")
     f = open(filename, 'r')
     for line in f:
         matches = fasta_interesting_stuff_regex.findall(line)
@@ -31,7 +44,8 @@ def unique_species_names(filename):
 def get_key_and_value(fasta_file):
     f = open(fasta_file, 'r')
     file_as_string = f.read()
-    species_sequence = r'^>(?P<strain_species>.+\]$)\n(?P<sequence>[A-Z\n]+)'
+    # species_sequence = r'^(?P<strain_species>.+\]$)\n(?P<sequence>[A-Z\n]+)'
+    species_sequence = r"(^>\[?.+\]?$)\n([A-Z\n]+)"
     match_group_tuples = re.findall(species_sequence, file_as_string, re.M)
     return dict([(k, v.replace('\n', '')) for k, v in match_group_tuples])
 
@@ -181,10 +195,24 @@ csv_name = "summarised_stats_and_processed_data.csv"
 df.to_csv(csv_name,sep=",",header=True)
 print("Please check your directory to get the summarised data. File name: summarised_stats_and_processed_data.csv")
 
+# Append the outliers to the CSV file in the rightmost column.
 with open(csv_name, 'a') as csv_file:
     for outlier in outliers.keys():
         csv_file.write(f",,,,,,,{outlier}\n")
     csv_file.close()
+
+with open('xyz_output.fasta','w') as write_fasta:
+
+    for (key, value) in species_sequence.items():
+        write_fasta.write(key)
+        write_fasta.write("\n")
+        values_list = [value[i:i+STRING_SPLIT_LENGTH] for i in range(0, len(value), STRING_SPLIT_LENGTH)]
+        write_fasta.write("\n".join(values_list))
+        write_fasta.write("\n")
+    write_fasta.flush()
+    write_fasta.close()
+
+sys.exit()
 
 #pseudo_code
 #want to change fasta file so it only includes the relevant species post-removal of outliers
@@ -218,7 +246,7 @@ process_output = process.stdout
 
 
 ##############PLOTTING SEQUENCE CONSERVATION##################################################################################
-os.system(f"plotcon -sequence {msf_file} -graph pdf)
+# os.system(f"plotcon -sequence {msf_file} -graph pdf)
 #display
 
 ##############DETERMINING MOTIFS##############################################################################################
