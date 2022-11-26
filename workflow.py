@@ -4,6 +4,7 @@ import sys, os, subprocess
 import re #for count
 import pandas as pd
 import numpy as np
+from tabulate import tabulate
 
 #####################FUNCTIONS#######################################################################################################
 def find_count(esearch_output): #Function to get Count
@@ -82,7 +83,6 @@ cmd = "esearch -db protein -query \""+protein_fam_taxonomy+"\""
 process = subprocess.Popen(cmd, -1, shell=True, text=True, stdout=subprocess.PIPE) #can't use os.system since that doesn't actually create a standard output
 process.wait() 
 process_output = process.stdout
-
 esearch_count = find_count(process_output)
 
 if not esearch_count > 0:
@@ -90,6 +90,17 @@ if not esearch_count > 0:
     sys.exit()
 
 print("Working on it...")
+
+"""
+This has had a tendency to fail on DNS requests when the tool calls for CURL.
+This may occur for the user as well, and is unfortunately beyond my control. 
+This may be due to rate limiting, i.e. making a request too many times. 
+
+curl: (6) Could not resolve host: eutils.ncbi.nlm.nih.gov
+ ERROR:  curl command failed ( Fri 25 Nov 23:43:44 GMT 2022 ) with: 6
+-X POST https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi [...]
+ WARNING:  FAILURE ( Fri 25 Nov 23:43:44 GMT 2022 )
+nquire -url https://eutils.ncbi.nlm.nih.gov/entrez/eutils/ efetch.fcgi [...]"""
 
 cmd = "esearch -db protein -query \""+protein_fam_taxonomy+"\" | efetch -format fasta > "+fasta_file_name+""
 process = subprocess.Popen(cmd, -1, shell=True, text=True, stdout=subprocess.PIPE)
@@ -123,9 +134,11 @@ species_sequence = get_key_and_value(fasta_file)
 
 values = [len(value) for value in species_sequence.values()]
 
+###############STATISTICS###################################################################################################
 print("The average sequence length across species is: ", sum(values)/len(species_sequence))
 print("The median sequence length is: ", np.median(values))
 
+average = sum(values)/len(species_sequence)
 median = np.median(values)
 
 Q3, Q1 = np.percentile(values, [75 ,25])
@@ -151,12 +164,49 @@ if len(outliers.keys()) == 0:
 else:
     delete_outlier = input("Would you like to delete these outliers? (y/n): ").lower()
     if delete_outlier == "y":
-        print("Attempting to remove {len(outliers.keys)} items")
+        print(f"Attempting to remove {len(outliers.keys())} items")
         list(map(species_sequence.pop,outliers.keys()))
 
 
-##############PLOTTING SEQUENCE CONSERVATION##################################################################################
+##############DATAFRAME TO CSV###############################################################################################
+horrible_dictionary = {}
 
+for (k, v) in outliers.items():
+    horrible_dictionary[k] = {"length:" : len(v)}
+
+outliers_df = pd.DataFrame( 
+    horrible_dictionary, index=[0]
+)
+
+df = pd.DataFrame( { "Protein Family" : protein_fam, 
+"Taxonomy ID" : taxonomy, 
+"Average Sequence Length" : average, 
+"Quartile 1" : Q1, 
+"Quartile 3" : Q3, 
+"Interquartile Range" : IQR,
+}, index=[0])
+
+csv_name = "summarised_stats_and_processed_data.csv"
+df.to_csv(csv_name,sep=",",header=True)
+print("Please check your directory to get the summarised data. ")
+
+# "Species sequence length outliers" : outliers_keys_as_lines}, index=[0])
+
+# print(df)
+# print(outliers_df.transpose())
+# print(tabulate(outliers_df, headers='keys', tablefmt='psql'))
+
+#pseudo_code
+#want to change fasta file so it only includes the relevant species post-removal of outliers
+#e.g. use original file if no outliers or if user says no to deleting; else use new file
+
+
+##############ALIGNING SEQUENCES##############################################################################################
+#clustalo -i (input fasta) -o (name.msf would be nice) —outfmt=msf —threads=(number u like, I use 20)
+#infoalign -sequence (name.msf) -outfile (output name)
+#infoalign -noweight -sequence () -outfile ()
+
+##############PLOTTING SEQUENCE CONSERVATION##################################################################################
 
 ##############DETERMINING MOTIFS##############################################################################################
 #patmatmotifs	Scan a protein sequence with motifs from the PROSITE database
