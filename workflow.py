@@ -217,12 +217,9 @@ process.wait()
 process_output = process.stdout
 
 
-#os.system(clustalo -i fasta_file -o fasta_file.msf —outfmt=msf —threads=20)
-#os.system(infoalign -sequence fasta_file.msf -outfile (output name))
-#os.system(infoalign -noweight -sequence () -outfile ())
-
 ##############PLOTTING SEQUENCE CONSERVATION##################################################################################
-
+os.system(f"plotcon -sequence {msf_file} -graph pdf)
+#display
 
 ##############DETERMINING MOTIFS##############################################################################################
 #patmatmotifs	Scan a protein sequence with motifs from the PROSITE database
