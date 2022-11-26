@@ -169,44 +169,60 @@ else:
 
 
 ##############DATAFRAME TO CSV###############################################################################################
-horrible_dictionary = {}
-
-for (k, v) in outliers.items():
-    horrible_dictionary[k] = {"length:" : len(v)}
-
-outliers_df = pd.DataFrame( 
-    horrible_dictionary, index=[0]
-)
-
 df = pd.DataFrame( { "Protein Family" : protein_fam, 
 "Taxonomy ID" : taxonomy, 
 "Average Sequence Length" : average, 
 "Quartile 1" : Q1, 
 "Quartile 3" : Q3, 
-"Interquartile Range" : IQR,
+"Interquartile Range" : IQR
 }, index=[0])
 
 csv_name = "summarised_stats_and_processed_data.csv"
 df.to_csv(csv_name,sep=",",header=True)
-print("Please check your directory to get the summarised data. ")
+print("Please check your directory to get the summarised data. File name: summarised_stats_and_processed_data.csv")
 
-# "Species sequence length outliers" : outliers_keys_as_lines}, index=[0])
-
-# print(df)
-# print(outliers_df.transpose())
-# print(tabulate(outliers_df, headers='keys', tablefmt='psql'))
+with open(csv_name, 'a') as csv_file:
+    for outlier in outliers.keys():
+        csv_file.write(f",,,,,,,{outlier}\n")
+    csv_file.close()
 
 #pseudo_code
 #want to change fasta file so it only includes the relevant species post-removal of outliers
 #e.g. use original file if no outliers or if user says no to deleting; else use new file
 
-
+print("Continuing to sequence alignment, please wait a moment...")
 ##############ALIGNING SEQUENCES##############################################################################################
-#clustalo -i (input fasta) -o (name.msf would be nice) —outfmt=msf —threads=(number u like, I use 20)
-#infoalign -sequence (name.msf) -outfile (output name)
-#infoalign -noweight -sequence () -outfile ()
+clustalo_cmd = f"clustalo -i {fasta_file} -o {fasta_file[:-3]}.msf -outfmt=msf -threads=20"
+msf_file = f"{fasta_file[:-3]}.msf"
+
+print("Aligning...")
+process = subprocess.Popen(clustalo_cmd, -1, shell=True, text=True, stdout=subprocess.PIPE)
+process.wait()
+process_output = process.stdout
+
+output_file_infoalign = input("Please input a name for your sequence file for infoalignment: ")
+infoalign_cmd = f"infoalign -sequence {msf_file} -outfile {output_file_infoalign}"
+
+print("Completed step 1 of alignment, continuing to Infoalign...")
+print("Step 1 of infoalignment...")
+process = subprocess.Popen(infoalign_cmd, -1, shell=True, text=True, stdout=subprocess.PIPE)
+process.wait()
+process_output = process.stdout
+
+print("Step 2 of infoalignment")
+step_2_output_file_info_align = input("Please input another name for your sequence file for step two of infoalignment: ")
+infoalign_cmd2 = f"infoalign -noweight -sequence {output_file_infoalign} -outfile {step_2_output_file_info_align}"
+process = subprocess.Popen(infoalign_cmd2, -1, shell=True, text=True, stdout=subprocess.PIPE)
+process.wait()
+process_output = process.stdout
+
+
+#os.system(clustalo -i fasta_file -o fasta_file.msf —outfmt=msf —threads=20)
+#os.system(infoalign -sequence fasta_file.msf -outfile (output name))
+#os.system(infoalign -noweight -sequence () -outfile ())
 
 ##############PLOTTING SEQUENCE CONSERVATION##################################################################################
+
 
 ##############DETERMINING MOTIFS##############################################################################################
 #patmatmotifs	Scan a protein sequence with motifs from the PROSITE database
