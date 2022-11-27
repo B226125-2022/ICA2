@@ -1,7 +1,7 @@
 #!usr/bin/env python3
 
 import sys, os, subprocess
-import re #for count
+import re
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt 
@@ -11,7 +11,7 @@ STRING_SPLIT_LENGTH = 70
 
 #####################FUNCTIONS#######################################################################################################
 def find_count(esearch_output): #Function to get Count
-    count_regex = re.compile(r'<Count>(\d+)<\/Count>')
+    count_regex = re.compile(r"<Count>(\d+)<\/Count>")
     for line in process_output.readlines():
         find_result = count_regex.findall(line)
         if len(find_result) > 0 and find_result[0].isdigit():
@@ -23,16 +23,15 @@ def find_count(esearch_output): #Function to get Count
 def unique_species_names(filename):
     result = []
     fasta_interesting_stuff_regex = re.compile(r"(>.+\[?.+\]?$)")
-    f = open(filename, 'r')
+    f = open(filename, "r")
     for line in f:
         matches = fasta_interesting_stuff_regex.findall(line)
         if len(matches) > 0:
             result.append(matches[0].strip('[').strip(']'))
-            # print(f"found this: {matches}")
     return set(result)
 
 def get_key_and_value(fasta_file):
-    f = open(fasta_file, 'r')
+    f = open(fasta_file, "r")
     file_as_string = f.read()
     # species_sequence = r'^(?P<strain_species>.+\]$)\n(?P<sequence>[A-Z\n]+)'
     species_sequence = r"(^>\[?.+\]?$)\n([A-Z\n]+)"
@@ -92,6 +91,10 @@ if not esearch_count > 0:
     print("No search results found, please check your inputs and try again.")
     sys.exit()
 
+if esearch_count > 1000:
+    print("More than 1000 sequences found, more specific search terms recommended.")
+    sys.exit()
+
 print("Working on it...")
 
 """
@@ -133,11 +136,10 @@ my_file.close()
 fasta_file = input("Please input the fasta file name for further data processing: ")
 
 species_sequence = get_key_and_value(fasta_file)
-#print(species_sequence)
 
-values = [len(value) for value in species_sequence.values()]
 
 ###############STATISTICS###################################################################################################
+values = [len(value) for value in species_sequence.values()]
 print("The average sequence length across species is: ", sum(values)/len(species_sequence))
 print("The median sequence length is: ", np.median(values))
 
@@ -171,7 +173,7 @@ else:
         print(f"Attempting to remove {len(outliers.keys())} items")
         list(map(species_sequence.pop,outliers.keys()))
         print(f"Overwriting fasta file...")
-        with open(fasta_file,'w') as write_fasta:
+        with open(fasta_file,"w") as write_fasta:
             for (key, value) in species_sequence.items():
                 write_fasta.write(key)
                 write_fasta.write("\n")
@@ -197,12 +199,12 @@ df.to_csv(csv_name, sep=",", header=True)
 print("Please check your directory to get the summarised data. File name: summarised_stats_and_processed_data.csv")
 
 # Append the outliers to the CSV file in the rightmost column.
-with open(csv_name, 'a') as csv_file:
+with open(csv_name, "a") as csv_file:
     for outlier in outliers.keys():
         csv_file.write(f",,,,,,,{outlier}\n")
     csv_file.close()
 
-print("Continuing to sequence alignment, please wait a moment...")
+print("\nContinuing to sequence alignment, please wait a moment...")
 ##############ALIGNING SEQUENCES##############################################################################################
 msf_file = f"{fasta_file[:-3]}.msf"
 
@@ -232,7 +234,7 @@ print(f"Infoalignment complete, please check work directory for alignment inform
 
 ##############PLOTTING SEQUENCE CONSERVATION##################################################################################
 while True:
-    plotting = input("Would you like to continue to plotting? (y/n): ".lower())
+    plotting = input("\nWould you like to continue to plotting? (y/n): ".lower())
     if plotting == "y":
         print("If you are ssh-ed into a server, make sure that you used the -Y option to make sure graphics work. Image loading may take a while...\nPlease close the graph to continue motif scanning")
         output_graph = f"{fasta_file[:-3]}"
@@ -251,17 +253,52 @@ motif_output = "motifs"
 total_outputs = []
 value_filepath = "file_for_patmatmotifs.fa"
 
-print("Scanning for motifs...")
+print("\nScanning for motifs...")
 
 for (k, v) in species_sequence.items():
-    with open(value_filepath, 'w') as value_file:
-        value_file.write(f'{k}\n{v}')
+    with open(value_filepath, "w") as value_file:
+        value_file.write(f"{k}\n{v}")
     subprocess.call(['bash', '-c', f"patmatmotifs -sequence {value_filepath} -outfile {motif_output}"])
-    singleseq = subprocess.check_output(f'cat {motif_output}', shell=True).decode("UTF-8")
+    one_seq = subprocess.check_output(f'cat {motif_output}', shell=True).decode("UTF-8")
     
-    with open('total_outputs.txt', 'a') as total_outputs:
-        total_outputs.write(singleseq)
+    with open("total_outputs.txt", "a") as total_outputs:
+        total_outputs.write(one_seq)
 
 print("Please check the file name 'total_outputs.txt' for motifs found across the fasta file.")
 
 ##############OTHER BIOLOGICAL INPUTS#########################################################################################
+print("\nContinuing to other Biological Outputs of Interest...")
+print("Getting peptide properties...")
+
+one_species = "one_species.fa"
+
+for index, (k, v) in enumerate(species_sequence.items()):
+    print("Index: ", index, "\nSpecies: ", k)
+
+select_species = input("Please select an index number to do further analysis on a specific species: ")
+species_of_interest_key = list(species_sequence.keys())[int(select_species)]
+species_of_interest_value = list(species_sequence.values())[int(select_species)]
+
+with open(one_species, "w") as one_species_file:
+    one_species_file.write(f"{species_of_interest_key}\n{species_of_interest_value}")
+subprocess.call(['bash', '-c', f"pepinfo -sequence {one_species} -graph png -outfile {one_species}"])
+
+print(f"Process complete, please check file names pepinfo.1.png, pepinfo.2.png, and {one_species} to get residue characteristics in both graphical and tabular formats")
+
+while True:
+    display_png = input("Would you like to display said .png files? (y/n): ".lower())
+    if display_png == "y":
+        print("If you are ssh-ed into a server, make sure that you used the -Y option to make sure graphics work. Image loading may take a while...\nPlease close the graph to continue to further analysis")
+        img = mpimg.imread("pepinfo.1.png")
+        imgplot = plt.imshow(img)
+        plt.axis("off")
+        plt.show()
+        img2 = mpimg.imread("pepinfo.2.png")
+        imgplot = plt.imshow(img2)
+        plt.axis("off")
+        plt.show()
+        break
+    elif display_png == "n":
+        print("Program completed")
+        sys.exit()
+    print("Please provide a y/n answer.\n")
