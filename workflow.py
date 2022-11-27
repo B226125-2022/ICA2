@@ -4,20 +4,10 @@ import sys, os, subprocess
 import re #for count
 import pandas as pd
 import numpy as np
-from tabulate import tabulate
+import matplotlib.pyplot as plt 
+import matplotlib.image as mpimg
 
 STRING_SPLIT_LENGTH = 70
-
-
-# [species_sequence[i:i+STRING_SPLIT_LENGTH] for i in range(0, len(species_sequence), STRING_SPLIT_LENGTH)]
-
-'''
-for (k,v) in dict.items():
-    write key to file
-    values_list = [value[i:i+STRING_SPLIT_LENGTH] for i in range(0, len(value), STRING_SPLIT_LENGTH)]
-    write values_list.join('\n')
-'''
-
 
 #####################FUNCTIONS#######################################################################################################
 def find_count(esearch_output): #Function to get Count
@@ -64,7 +54,6 @@ Please end the filename with '.fa':
 
 while True:
     fasta_file_name = input(fasta_file_spec_string)
-
     if not fasta_file_name.endswith(".fa"):
         print("Please provide a filename which ends in '.fa'\n")
         continue
@@ -121,7 +110,7 @@ process = subprocess.Popen(cmd, -1, shell=True, text=True, stdout=subprocess.PIP
 process.wait()
 process_output = process.stdout
 
-print("process complete, please check work directory if you would like to see the full fasta file output")
+print("Process complete, please check work directory if you would like to see the full fasta file output")
 
 ##############SEQUENCE PROCESSING#############################################################################################
 my_file = open("sequence_general_info.txt","w")
@@ -180,7 +169,18 @@ else:
     if delete_outlier == "y":
         print(f"Attempting to remove {len(outliers.keys())} items")
         list(map(species_sequence.pop,outliers.keys()))
-
+        print(f"Overwriting fasta file...")
+        with open(fasta_file,'w') as write_fasta:
+            for (key, value) in species_sequence.items():
+                write_fasta.write(key)
+                write_fasta.write("\n")
+                values_list = [value[i:i+STRING_SPLIT_LENGTH] for i in range(0, len(value), STRING_SPLIT_LENGTH)]
+                write_fasta.write("\n".join(values_list))
+                write_fasta.write("\n")
+            write_fasta.flush()
+            write_fasta.close()
+    else:
+        print("No deletions, continuing to summary stats and alignment...")
 
 ##############DATAFRAME TO CSV###############################################################################################
 df = pd.DataFrame( { "Protein Family" : protein_fam, 
@@ -192,7 +192,7 @@ df = pd.DataFrame( { "Protein Family" : protein_fam,
 }, index=[0])
 
 csv_name = "summarised_stats_and_processed_data.csv"
-df.to_csv(csv_name,sep=",",header=True)
+df.to_csv(csv_name, sep=",", header=True)
 print("Please check your directory to get the summarised data. File name: summarised_stats_and_processed_data.csv")
 
 # Append the outliers to the CSV file in the rightmost column.
@@ -201,28 +201,11 @@ with open(csv_name, 'a') as csv_file:
         csv_file.write(f",,,,,,,{outlier}\n")
     csv_file.close()
 
-with open('xyz_output.fasta','w') as write_fasta:
-
-    for (key, value) in species_sequence.items():
-        write_fasta.write(key)
-        write_fasta.write("\n")
-        values_list = [value[i:i+STRING_SPLIT_LENGTH] for i in range(0, len(value), STRING_SPLIT_LENGTH)]
-        write_fasta.write("\n".join(values_list))
-        write_fasta.write("\n")
-    write_fasta.flush()
-    write_fasta.close()
-
-sys.exit()
-
-#pseudo_code
-#want to change fasta file so it only includes the relevant species post-removal of outliers
-#e.g. use original file if no outliers or if user says no to deleting; else use new file
-
 print("Continuing to sequence alignment, please wait a moment...")
 ##############ALIGNING SEQUENCES##############################################################################################
-clustalo_cmd = f"clustalo -i {fasta_file} -o {fasta_file[:-3]}.msf -outfmt=msf -threads=20"
 msf_file = f"{fasta_file[:-3]}.msf"
 
+clustalo_cmd = f"clustalo -i {fasta_file} -o {fasta_file[:-3]}.msf -outfmt=msf -threads=20"
 print("Aligning...")
 process = subprocess.Popen(clustalo_cmd, -1, shell=True, text=True, stdout=subprocess.PIPE)
 process.wait()
@@ -244,12 +227,27 @@ process = subprocess.Popen(infoalign_cmd2, -1, shell=True, text=True, stdout=sub
 process.wait()
 process_output = process.stdout
 
+print(f"Infoalignment complete, please check work directory for alignment information named : {output_file_infoalign} & {step_2_output_file_info_align}")
 
 ##############PLOTTING SEQUENCE CONSERVATION##################################################################################
-# os.system(f"plotcon -sequence {msf_file} -graph pdf)
-#display
+while True:
+    plotting = input("Would you like to continue to plotting? (y/n): ".lower())
+    if plotting == "y":
+        print("If you are ssh-ed into a server, make sure that you used the -Y option to make sure graphics work. Image loading may take a while...")
+        output_graph = f"{fasta_file[:-3]}"
+        os.system(f"plotcon -sequence {msf_file} -winsize 4 -graph png -goutfile {output_graph}")
+        img = mpimg.imread(f"{output_graph}.1.png")
+        imgplot = plt.imshow(img)
+        plt.axis("off")
+        plt.show()
+        break
+    elif plotting == "n":
+        print("Continuing to motif scanning")
+    print("Please provide a y/n answer.\n")
 
 ##############DETERMINING MOTIFS##############################################################################################
-#patmatmotifs	Scan a protein sequence with motifs from the PROSITE database
+motif_output = "motifs"
 
+for value in species_sequence.values():
+    os.system(f"patmatmotifs -sequence <({value}) -outfile {motif_output}")
 ##############OTHER BIOLOGICAL INPUTS#########################################################################################
