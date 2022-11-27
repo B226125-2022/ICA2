@@ -151,11 +151,12 @@ print("The Q1 sequence length is: ", Q1)
 
 IQR = Q3 - Q1
 upper_boundary = Q3 + (1.5 * IQR)
-print("Upper Boundary is: ", upper_boundary)
+print("Upper Boundary sequence length is: ", upper_boundary)
 lower_boundary = Q1 - (1.5 * IQR)
-print("Lower Boundary is: ", lower_boundary)
+print("Lower Boundary sequence length is: ", lower_boundary)
 
 print("Outliers are defined as 1.5 multiplied by Q1 and Q3. If values are below and above these quartiles respectively, they will appear below.")
+
 outliers = {}
 for (k, v) in species_sequence.items():
     if len(v) < lower_boundary or len(v) > upper_boundary:
@@ -205,7 +206,7 @@ print("Continuing to sequence alignment, please wait a moment...")
 ##############ALIGNING SEQUENCES##############################################################################################
 msf_file = f"{fasta_file[:-3]}.msf"
 
-clustalo_cmd = f"clustalo -i {fasta_file} -o {fasta_file[:-3]}.msf -outfmt=msf -threads=20"
+clustalo_cmd = f"clustalo -v -i {fasta_file} -o {fasta_file[:-3]}.msf --outfmt=msf --threads=20"
 print("Aligning...")
 process = subprocess.Popen(clustalo_cmd, -1, shell=True, text=True, stdout=subprocess.PIPE)
 process.wait()
@@ -233,7 +234,7 @@ print(f"Infoalignment complete, please check work directory for alignment inform
 while True:
     plotting = input("Would you like to continue to plotting? (y/n): ".lower())
     if plotting == "y":
-        print("If you are ssh-ed into a server, make sure that you used the -Y option to make sure graphics work. Image loading may take a while...")
+        print("If you are ssh-ed into a server, make sure that you used the -Y option to make sure graphics work. Image loading may take a while...\nPlease close the graph to continue motif scanning")
         output_graph = f"{fasta_file[:-3]}"
         os.system(f"plotcon -sequence {msf_file} -winsize 4 -graph png -goutfile {output_graph}")
         img = mpimg.imread(f"{output_graph}.1.png")
@@ -247,7 +248,20 @@ while True:
 
 ##############DETERMINING MOTIFS##############################################################################################
 motif_output = "motifs"
+total_outputs = []
+value_filepath = "file_for_patmatmotifs.fa"
 
-for value in species_sequence.values():
-    os.system(f"patmatmotifs -sequence <({value}) -outfile {motif_output}")
+print("Scanning for motifs...")
+
+for (k, v) in species_sequence.items():
+    with open(value_filepath, 'w') as value_file:
+        value_file.write(f'{k}\n{v}')
+    subprocess.call(['bash', '-c', f"patmatmotifs -sequence {value_filepath} -outfile {motif_output}"])
+    singleseq = subprocess.check_output(f'cat {motif_output}', shell=True).decode("UTF-8")
+    
+    with open('total_outputs.txt', 'a') as total_outputs:
+        total_outputs.write(singleseq)
+
+print("Please check the file name 'total_outputs.txt' for motifs found across the fasta file.")
+
 ##############OTHER BIOLOGICAL INPUTS#########################################################################################
