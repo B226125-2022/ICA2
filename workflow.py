@@ -133,9 +133,9 @@ while True:
 
 my_file.close()
 
-fasta_file = input("Please input the fasta file name for further data processing: ")
+#fasta_file = input("Please input the fasta file name for further data processing: ")
 
-species_sequence = get_key_and_value(fasta_file)
+species_sequence = get_key_and_value(fasta_file_name)
 
 
 ###############STATISTICS###################################################################################################
@@ -168,12 +168,12 @@ for (k, v) in species_sequence.items():
 if len(outliers.keys()) == 0:
     print("No outliers have been found.")
 else:
-    delete_outlier = input("Would you like to delete these outliers? (y/n): ").lower()
+    delete_outlier = input("Would you like to delete these outliers? (y/n) (if you select n, the process will continue with the original fasta file): ").lower()
     if delete_outlier == "y":
         print(f"Attempting to remove {len(outliers.keys())} items")
         list(map(species_sequence.pop,outliers.keys()))
         print(f"Overwriting fasta file...")
-        with open(fasta_file,"w") as write_fasta:
+        with open(fasta_file_name,"w") as write_fasta:
             for (key, value) in species_sequence.items():
                 write_fasta.write(key)
                 write_fasta.write("\n")
@@ -198,46 +198,49 @@ csv_name = "summarised_stats_and_processed_data.csv"
 df.to_csv(csv_name, sep=",", header=True)
 print("Please check your directory to get the summarised data. File name: summarised_stats_and_processed_data.csv")
 
-# Append the outliers to the CSV file in the rightmost column.
-with open(csv_name, "a") as csv_file:
-    for outlier in outliers.keys():
-        csv_file.write(f",,,,,,,{outlier}\n")
-    csv_file.close()
-
 print("\nContinuing to sequence alignment, please wait a moment...")
 ##############ALIGNING SEQUENCES##############################################################################################
-msf_file = f"{fasta_file[:-3]}.msf"
+msf_file = f"{fasta_file_name[:-3]}.msf"
 
-clustalo_cmd = f"clustalo -v -i {fasta_file} -o {fasta_file[:-3]}.msf --outfmt=msf --threads=20"
-print("Aligning...")
-process = subprocess.Popen(clustalo_cmd, -1, shell=True, text=True, stdout=subprocess.PIPE)
-process.wait()
-process_output = process.stdout
+while True:
+    if os.path.isfile(msf_file):
+        print("You have specified a file name which exists. The msf file will be overwritten.")
+        clustalo_cmd = f"clustalo -v -i {fasta_file_name} -o {fasta_file_name[:-3]}.msf --outfmt=msf --threads=20 --force"
+        print("Aligning...")
+        process = subprocess.Popen(clustalo_cmd, -1, shell=True, text=True, stdout=subprocess.PIPE)
+        process.wait()
+        process_output = process.stdout
+        break
+    else:
+        clustalo_cmd = f"clustalo -v -i {fasta_file_name} -o {fasta_file_name[:-3]}.msf --outfmt=msf --threads=20"
+        print("Aligning...")
+        process = subprocess.Popen(clustalo_cmd, -1, shell=True, text=True, stdout=subprocess.PIPE)
+        process.wait()
+        process_output = process.stdout
+    break
+
+# clustalo_cmd = f"clustalo -v -i {fasta_file_name} -o {fasta_file_name[:-3]}.msf --outfmt=msf --threads=20"
+# print("Aligning...")
+# process = subprocess.Popen(clustalo_cmd, -1, shell=True, text=True, stdout=subprocess.PIPE)
+# process.wait()
+# process_output = process.stdout
 
 output_file_infoalign = input("Please input a name for your sequence file for infoalignment: ")
 infoalign_cmd = f"infoalign -sequence {msf_file} -outfile {output_file_infoalign}"
 
-print("Completed step 1 of alignment, continuing to Infoalign...")
-print("Step 1 of infoalignment...")
+print("Processing with Infoalign... ")
 process = subprocess.Popen(infoalign_cmd, -1, shell=True, text=True, stdout=subprocess.PIPE)
 process.wait()
 process_output = process.stdout
 
-print("Step 2 of infoalignment")
-step_2_output_file_info_align = input("Please input another name for your sequence file for step two of infoalignment: ")
-infoalign_cmd2 = f"infoalign -noweight -sequence {output_file_infoalign} -outfile {step_2_output_file_info_align}"
-process = subprocess.Popen(infoalign_cmd2, -1, shell=True, text=True, stdout=subprocess.PIPE)
-process.wait()
-process_output = process.stdout
-
-print(f"Infoalignment complete, please check work directory for alignment information named : {output_file_infoalign} & {step_2_output_file_info_align}")
+print(f"Infoalignment complete, please check the work directory for alignment information named : {output_file_infoalign} which contains general information of the sequence length, alignment length gaps, identity%, similarity% and more")
 
 ##############PLOTTING SEQUENCE CONSERVATION##################################################################################
 while True:
     plotting = input("\nWould you like to continue to plotting? (y/n): ".lower())
     if plotting == "y":
         print("If you are ssh-ed into a server, make sure that you used the -Y option to make sure graphics work. Image loading may take a while...\nPlease close the graph to continue motif scanning")
-        output_graph = f"{fasta_file[:-3]}"
+        output_graph = f"{fasta_file_name[:-3]}"
         os.system(f"plotcon -sequence {msf_file} -winsize 4 -graph png -goutfile {output_graph}")
         img = mpimg.imread(f"{output_graph}.1.png")
         imgplot = plt.imshow(img)
@@ -246,6 +249,7 @@ while True:
         break
     elif plotting == "n":
         print("Continuing to motif scanning")
+        break
     print("Please provide a y/n answer.\n")
 
 ##############DETERMINING MOTIFS##############################################################################################
